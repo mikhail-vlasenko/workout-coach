@@ -255,7 +255,7 @@ def main():
       - Normal pose overlay
       - Additional view with a 45° rotation
     """
-    video_path = "../data/deadlift_diagonal_view.mp4"
+    video_path = "../../data/deadlift_diagonal_view.mp4"
     pose_estimation_3d_demo(
         video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )

@@ -11,6 +11,7 @@ import numpy as np
 import mediapipe as mp
 
 # MediaPipe Pose includes 33 keypoints (landmarks).
+# We'll import the drawing utils for convenience if you want built-in visualization.
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
@@ -52,38 +53,11 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
     return output
 
 
-def z_to_color(z: float) -> tuple[int, int, int]:
-    """
-    Convert a normalized z-value (often in range ~[-0.5..0.5], but can vary)
-    into a color (B, G, R) for visualization.
-
-    Negative z (closer to camera) will be more reddish; positive z (further away)
-    will be more bluish in this example.
-
-    :param z: The normalized depth value from MediaPipe Pose (z < 0 is in front).
-    :return: A color in (B, G, R) format.
-    """
-    # Clamp z to a reasonable range for display (e.g., [-0.5, 0.5])
-    z_clamped = max(-0.5, min(0.5, z))
-    # Map z from [-0.5, 0.5] to [0, 1]
-    normalized = (z_clamped + 0.5) / 1.0
-
-    # We'll create a simple gradient:
-    #   z = -0.5 => (B, G, R) = (0, 0, 255)   (red)
-    #   z =  0.5 => (B, G, R) = (255, 0, 0)   (blue)
-    # Feel free to adjust for your preferred color mapping.
-    b_val = int(normalized * 255)  # goes from 0 to 255
-    r_val = 255 - b_val  # goes from 255 down to 0
-    g_val = 0
-
-    return (b_val, g_val, r_val)
-
-
 def draw_keypoints_2d(
     frame: np.ndarray, landmarks_3d: np.ndarray, confidence_threshold: float = 0.5
 ) -> None:
     """
-    Draw 2D landmarks on the image (using only x,y) and color-code them by z-depth.
+    Draw 2D landmarks on the image (using only x,y) and some edges.
 
     :param frame: The image (BGR) on which to draw.
     :param landmarks_3d: A NumPy array of shape (33, 4) -> [x, y, z, visibility].
@@ -92,17 +66,16 @@ def draw_keypoints_2d(
     """
     h, w, _ = frame.shape
 
+    # You could define your own skeleton edges if you like.
+    # Here we will just do something simple: draw every point, no lines,
+    # or you can rely on mp_drawing to do it for you.
     for i in range(len(landmarks_3d)):
         x, y, z, visibility = landmarks_3d[i]
         if visibility < confidence_threshold:
             continue
-
         px = int(x * w)
         py = int(y * h)
-
-        # Convert z to a color
-        color = z_to_color(z)
-        cv2.circle(frame, (px, py), 5, color, -1)
+        cv2.circle(frame, (px, py), 5, (0, 255, 0), -1)
 
 
 def pose_estimation_3d_demo(
@@ -113,7 +86,7 @@ def pose_estimation_3d_demo(
 
     :param video_path: Path to the input video file.
     :param scale_factor: Factor by which to scale the frame for display.
-    :param show_mediapipe_overlay: If True, use MediaPipe's own drawing function (no color-coding).
+    :param show_mediapipe_overlay: If True, use MediaPipe's own drawing function.
     :return: None.
     """
     cap = cv2.VideoCapture(video_path)
@@ -129,12 +102,17 @@ def pose_estimation_3d_demo(
     )
 
     while True:
-        time.sleep(0.03)  # for demonstration, limit frame rate slightly
+        time.sleep(0.03)  # for demonstration
         ret, frame = cap.read()
         if not ret:
-            # End of video or read error, optionally restart or break
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            continue
+            # End of video or read error
+            cap = cv2.VideoCapture(video_path)
+            ret, frame = cap.read()
+            # break
+
+        # Convert BGR -> RGB
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = pose.process(rgb_frame)
 
         # Optionally resize for display
         if scale_factor != 1.0:
@@ -143,10 +121,6 @@ def pose_estimation_3d_demo(
             frame = cv2.resize(
                 frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
             )
-
-        # Convert BGR -> RGB
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = pose.process(rgb_frame)
 
         # If a person is detected, extract keypoints
         if results.pose_landmarks:
@@ -159,16 +133,21 @@ def pose_estimation_3d_demo(
                 dtype=np.float32,
             )
 
+            # Draw the keypoints (2D projection)
             if show_mediapipe_overlay:
-                # Use built-in MediaPipe drawing for convenience (no color-coding)
+                # Use built-in MediaPipe drawing for convenience
+                # Must convert the display frame back to RGB for mp_drawing
                 disp_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 mp_drawing.draw_landmarks(
                     disp_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
                 )
                 frame = cv2.cvtColor(disp_rgb, cv2.COLOR_RGB2BGR)
             else:
-                # Our custom color-coded drawing
                 draw_keypoints_2d(frame, landmarks_3d, confidence_threshold=0.5)
+
+            # You now have 3D info in `landmarks_3d`. For example, you can print the first keypoint's z:
+            # print("Landmark 0 (nose) => x=%.3f, y=%.3f, z=%.3f, visibility=%.3f" %
+            #       (landmarks_3d[0, 0], landmarks_3d[0, 1], landmarks_3d[0, 2], landmarks_3d[0, 3]))
 
         cv2.imshow("3D Pose Estimation (MediaPipe)", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -184,14 +163,10 @@ def main():
     Main function that runs the 3D pose estimation on a sample video.
     """
     # Replace with your own video file or use your webcam with 0
-    video_path = "../data/deadlift_diagonal_view.mp4"
+    video_path = "../../data/deadlift_diagonal_view.mp4"
 
     pose_estimation_3d_demo(
-        video_path=video_path,
-        scale_factor=1.0,
-        # If True, draws MediaPipe's official overlay (no color-coding).
-        # If False, uses our custom color-coded drawing by Z depth.
-        show_mediapipe_overlay=False,
+        video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )
 
 
