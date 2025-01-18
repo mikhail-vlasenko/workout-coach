@@ -8,7 +8,7 @@ from utils import get_exercise_stage
 
 key = os.getenv("NEBIUS_KEY")
 
-client = OpenAI(
+nebius_client = OpenAI(
     base_url="https://api.studio.nebius.ai/v1/",
     api_key=os.environ.get("NEBIUS_API_KEY"),
 )
@@ -57,7 +57,7 @@ def get_vlm_feedback(reference_base64, attempt_base64) -> str:
     try:
         print(get_prompt(stage))
         start = time.time()
-        response = client.chat.completions.create(
+        response = nebius_client.chat.completions.create(
             model="Qwen/Qwen2-VL-72B-Instruct",
             messages=messages,
             max_tokens=500,

@@ -1,9 +1,12 @@
+import json
 import os
+from typing import List
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
-from vlm_request import get_vlm_feedback, encode_image_to_base64
+from vlm_request import get_vlm_feedback, encode_image_to_base64, nebius_client
 
 app = FastAPI()
 
@@ -20,6 +23,64 @@ async def root():
     print(result)
     return {"message": result}
 
+
+class WorkoutForm(BaseModel):
+    age: int
+    weight: int  # in kg
+    difficulty: str  # easy, medium, hard
+    muscle_groups: List[str]
+    length: int  # in minutes
+
+
+class Set(BaseModel):
+    weight: str
+    reps: int
+
+class Exercise(BaseModel):
+    name: str
+    target_muscle: str
+    order: int
+    sets: List[Set]
+
+class WorkoutResponse(BaseModel):
+    title: str
+    description: str
+    exercises: List[Exercise]
+
+
+@app.post("/make-workout")
+async def make_workout(workout_form: WorkoutForm):
+    def get_exercises(workout_form: WorkoutForm):
+        prompt = 'You are a personal trainer creating a workout plan for a client.'
+        prompt += f'\nYour client is a {workout_form.age}-year-old and weighs {workout_form.weight} kg.'
+        prompt += (f'\nCreate an approximately {workout_form.length}-minute '
+                   f'{workout_form.difficulty} workout that targets the following muscle groups:')
+        for group in workout_form.muscle_groups:
+            prompt += f'\n- {group}'
+        prompt += '\nUse the following exercises:\n'
+        with open('data/exercise_summary.txt', 'r') as f:
+            prompt += ''.join(f.readlines())
+        prompt += '\nOutput the exercises in the provided json format.'
+        response = nebius_client.beta.chat.completions.parse(
+            model="meta-llama/Llama-3.3-70B-Instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ],
+            max_tokens=1000,
+            temperature=0.0,
+            response_format=WorkoutResponse
+        )
+        return response.choices[0].message.parsed
+
+    return get_exercises(workout_form)
 
 @app.get("/one-rep-left")
 async def play_one_rep_audio():
