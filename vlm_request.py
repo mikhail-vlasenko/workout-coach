@@ -13,6 +13,27 @@ nebius_client = OpenAI(
 )
 
 
+def json_llm_request(prompt, pydantic_model):
+    response = nebius_client.beta.chat.completions.parse(
+                model="meta-llama/Llama-3.3-70B-Instruct",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=2000,
+                temperature=0.0,
+                response_format=pydantic_model
+            )
+    return response.choices[0].message.parsed
+
+
 def encode_image_to_base64(image_path: str) -> str:
     """Convert an image file to base64 string."""
     with open(image_path, "rb") as image_file:
