@@ -1,0 +1,32 @@
+Lower back rounding (visible curve where back should be neutral)
+Upper back excessive rounding (shoulders rolled forward significantly)
+Bar positioned in front of mid-foot in setup
+Bar positioned too close to shins in setup
+Shoulders positioned behind bar in setup
+Hips too low in setup (resembling a squat position)
+Hips too high in setup (legs nearly straight)
+Arms not vertical when viewed from front
+Shins not touching bar in setup
+Head tilted up (looking forward/up instead of neutral)
+Head tilted down (looking at feet)
+Hips rising before chest (back angle becoming more horizontal during initial pull)
+Bar path not vertical (bar swinging forward during lift)
+Bar drifting away from legs during pull
+Arms bent during pull
+Knees caving inward during lift
+Asymmetrical pull (one hip higher than other)
+Excessive lean back at lockout
+Incomplete hip lockout at top
+Incomplete knee lockout at top
+Shrugging shoulders at top
+Shoulders rolled forward at lockout
+Grip too wide (arms not vertical from front view)
+Grip too narrow (hands inside shoulder width)
+Heels rising off floor during lift
+Stance too wide (feet outside hip width)
+Stance too narrow (feet inside hip width)
+Bar swinging away from body during descent
+Knees blocking bar path during descent
+Asymmetrical foot placement (one foot more forward)
+Uneven grip width (hands at different distances from center)
+Hyperextended lower back (excessive arch)

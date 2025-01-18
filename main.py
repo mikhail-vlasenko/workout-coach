@@ -1,76 +1,103 @@
-import base64
+import json
 import os
-
+from typing import List
 from dotenv import load_dotenv
+
 from fastapi import FastAPI
-from openai import OpenAI
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 load_dotenv()
 
+from vlm_request import get_vlm_feedback, encode_image_to_base64, nebius_client
+
+
 app = FastAPI()
-client = OpenAI(
-    base_url="https://api.studio.nebius.ai/v1/",
-    api_key=os.environ.get("NEBIUS_API_KEY"),
-)
-
-
-def encode_image_to_base64(image_path: str) -> str:
-    """Convert an image file to base64 string."""
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
-
-
-def compare_exercise_images(reference_image_path: str, attempt_image_path: str) -> str:
-    """
-    Compare two exercise images using OpenAI's Vision model to check if the exercise
-    is performed correctly.
-    """
-    # Encode both images
-    reference_base64 = encode_image_to_base64(reference_image_path)
-    attempt_base64 = encode_image_to_base64(attempt_image_path)
-
-    # Construct the messages with both images
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "I'll show you two images. The first is a reference image of an exercise being performed correctly. The second is someone attempting the same exercise. Please analyze if the exercise in the second image is being performed correctly compared to the reference. Point out any differences in form, positioning, or technique that need improvement.",
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{reference_base64}",
-                        "detail": "high",
-                    },
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{attempt_base64}",
-                        "detail": "high",
-                    },
-                },
-            ],
-        }
-    ]
-
-    try:
-        response = client.chat.completions.create(
-            model="Qwen/Qwen2-VL-72B-Instruct", messages=messages, max_tokens=500
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"Error occurred: {str(e)}"
 
 
 @app.get("/")
 async def root():
     reference_image_path = "data/correct.png"
-    attempt_image_path = "data/wrong.jpg"
+    attempt_image_path = "data/bad/deadlift-hips_0.webp"
 
     print("Comparing exercise images...")
-    result = compare_exercise_images(reference_image_path, attempt_image_path)
+    attempt_base64 = encode_image_to_base64(attempt_image_path)
+    result = get_vlm_feedback(None, attempt_base64=attempt_base64)
     print("\nAnalysis Result:")
     print(result)
+
+
+class WorkoutForm(BaseModel):
+    age: int
+    weight: int  # in kg
+    difficulty: str  # easy, medium, hard
+    muscle_groups: List[str]
+    length: int  # in minutes
+
+
+class Set(BaseModel):
+    weight: int
+    reps: int
+
+class Exercise(BaseModel):
+    name: str
+    target_muscle: str
+    order: int
+    sets: List[Set]
+
+class WorkoutResponse(BaseModel):
+    title: str
+    description: str
+    exercises: List[Exercise]
+
+
+@app.post("/make-workout")
+async def make_workout(workout_form: WorkoutForm):
+    def get_exercises(workout_form: WorkoutForm):
+        prompt = 'You are a personal trainer creating a workout plan for a client.'
+        prompt += f'\nYour client is a {workout_form.age}-year-old and weighs {workout_form.weight} kg.'
+        prompt += (f'\nCreate an approximately {workout_form.length}-minute '
+                   f'{workout_form.difficulty} workout that targets the following muscle groups:')
+        for group in workout_form.muscle_groups:
+            prompt += f'\n- {group}'
+        prompt += '\nUse the following exercises:\n'
+        with open('data/exercise_summary.txt', 'r') as f:
+            prompt += ''.join(f.readlines())
+        prompt += '\nOutput the exercises in the provided json format. Use 0 weight for bodyweight exercises.'
+        response = nebius_client.beta.chat.completions.parse(
+            model="meta-llama/Llama-3.3-70B-Instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ],
+            max_tokens=1000,
+            temperature=0.0,
+            response_format=WorkoutResponse
+        )
+        return response.choices[0].message.parsed
+
+    return get_exercises(workout_form)
+
+@app.get("/one-rep-left")
+async def play_one_rep_audio():
+    """Endpoint to serve the 'one rep to go' audio file."""
+    audio_path = "audio/you can do it.mp3"
+    if not os.path.exists(audio_path):
+        return {"error": "Audio file not found"}
+
+    # Return the audio file with appropriate headers
+    return FileResponse(
+        audio_path,
+        media_type="audio/mpeg",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Content-Disposition": "inline; filename=one_rep_left.mp3"
+        }
+    )
