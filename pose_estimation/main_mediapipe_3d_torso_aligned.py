@@ -206,7 +206,7 @@ def main():
     Main function that runs the 3D pose estimation with orthogonal projections on a sample video.
     """
     # Replace with your own video file or use your webcam with 0
-    video_path = "./data/deadlift_diagonal_view.mp4"
+    video_path = "../data/deadlift_diagonal_view.mp4"
 
     pose_estimation_3d_demo_with_projections(
         video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True

@@ -319,7 +319,7 @@ def main():
     Main function that runs the 3D pose estimation on a sample video.
     """
     # Replace with your own video file or use your webcam with 0
-    video_path = "./data/deadlift_diagonal.mp4"
+    video_path = "../data/deadlift_diagonal.mp4"
 
     pose_estimation_3d_demo(
         video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
