@@ -1,16 +1,17 @@
 import json
 import os
+import uuid
 from typing import List
 from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-load_dotenv()
+from workout_response import WorkoutResponse, put_workout_in_db
 
-from vlm_request import get_vlm_feedback, encode_image_to_base64, nebius_client
-
+from vlm_request import get_vlm_feedback, encode_image_to_base64, nebius_client, json_llm_request
 
 app = FastAPI()
 
@@ -28,62 +29,43 @@ async def root():
 
 
 class WorkoutForm(BaseModel):
+    user_id: uuid.UUID
     age: int
     weight: int  # in kg
     difficulty: str  # easy, medium, hard
     muscle_groups: List[str]
     length: int  # in minutes
-
-
-class Set(BaseModel):
-    weight: int
-    reps: int
-
-class Exercise(BaseModel):
-    name: str
-    target_muscle: str
-    order: int
-    sets: List[Set]
-
-class WorkoutResponse(BaseModel):
-    title: str
-    description: str
-    exercises: List[Exercise]
+    comment: str  # user's comments for the workout creation "I'm feeling strong today"
 
 
 @app.post("/make-workout")
 async def make_workout(workout_form: WorkoutForm):
-    def get_exercises(workout_form: WorkoutForm):
+    def get_exercises(workout_form: WorkoutForm) -> WorkoutResponse:
+        def check_substrings(line, substrings):
+            return any(substr in line for substr in substrings)
+
         prompt = 'You are a personal trainer creating a workout plan for a client.'
         prompt += f'\nYour client is a {workout_form.age}-year-old and weighs {workout_form.weight} kg.'
         prompt += (f'\nCreate an approximately {workout_form.length}-minute '
+                   f'(which is about {int(workout_form.length / 3)} total sets) '
                    f'{workout_form.difficulty} workout that targets the following muscle groups:')
         for group in workout_form.muscle_groups:
             prompt += f'\n- {group}'
+
+        prompt += f"\n\nClient's comment: {workout_form.comment}"
         prompt += '\nUse the following exercises:\n'
         with open('data/exercise_summary.txt', 'r') as f:
-            prompt += ''.join(f.readlines())
-        prompt += '\nOutput the exercises in the provided json format. Use 0 weight for bodyweight exercises.'
-        response = nebius_client.beta.chat.completions.parse(
-            model="meta-llama/Llama-3.3-70B-Instruct",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            max_tokens=1000,
-            temperature=0.0,
-            response_format=WorkoutResponse
-        )
-        return response.choices[0].message.parsed
+            lines = f.readlines()
+            filtered_lines = list(filter(lambda line: check_substrings(line, workout_form.muscle_groups), lines))
+            prompt += ''.join(filtered_lines)
+        prompt += '\nOutput the exercises in the provided json format.'
+        prompt += '\nUse 0 weight for bodyweight exercises.'
+        prompt += '\nIn the description, include a short (2 sentences max) explanation of why you created the workout like this.'
+        return json_llm_request(prompt, WorkoutResponse)
 
-    return get_exercises(workout_form)
+    workout = get_exercises(workout_form)
+    await put_workout_in_db(workout, workout_form.user_id)
+    return workout
 
 @app.get("/one-rep-left")
 async def play_one_rep_audio():
