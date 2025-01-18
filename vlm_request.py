@@ -6,7 +6,6 @@ from openai import OpenAI
 from prompt import get_prompt
 from utils import get_exercise_stage
 
-key = os.getenv("NEBIUS_KEY")
 
 nebius_client = OpenAI(
     base_url="https://api.studio.nebius.ai/v1/",

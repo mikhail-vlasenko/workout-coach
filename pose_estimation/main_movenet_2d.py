@@ -7,29 +7,47 @@ import tensorflow_hub as hub
 MOVENET_MODEL = "https://tfhub.dev/google/movenet/singlepose/thunder/4"
 
 KEYPOINT_NAMES = [
-    "nose", "left_eye", "right_eye", "left_ear", "right_ear",
-    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
-    "left_wrist", "right_wrist", "left_hip", "right_hip",
-    "left_knee", "right_knee", "left_ankle", "right_ankle"
+    "nose",
+    "left_eye",
+    "right_eye",
+    "left_ear",
+    "right_ear",
+    "left_shoulder",
+    "right_shoulder",
+    "left_elbow",
+    "right_elbow",
+    "left_wrist",
+    "right_wrist",
+    "left_hip",
+    "right_hip",
+    "left_knee",
+    "right_knee",
+    "left_ankle",
+    "right_ankle",
 ]
 
 EDGES = [
-    (0, 1), (0, 2),  # nose to eyes
-    (1, 3), (2, 4),  # eyes to ears
+    (0, 1),
+    (0, 2),  # nose to eyes
+    (1, 3),
+    (2, 4),  # eyes to ears
     (5, 6),  # shoulders
-    (5, 7), (7, 9),  # left shoulder -> left elbow -> left wrist
-    (6, 8), (8, 10),  # right shoulder -> right elbow -> right wrist
-    (5, 11), (6, 12),  # shoulders to hips
+    (5, 7),
+    (7, 9),  # left shoulder -> left elbow -> left wrist
+    (6, 8),
+    (8, 10),  # right shoulder -> right elbow -> right wrist
+    (5, 11),
+    (6, 12),  # shoulders to hips
     (11, 12),  # hips
-    (11, 13), (13, 15),  # left hip -> left knee -> left ankle
-    (12, 14), (14, 16)  # right hip -> right knee -> right ankle
+    (11, 13),
+    (13, 15),  # left hip -> left knee -> left ankle
+    (12, 14),
+    (14, 16),  # right hip -> right knee -> right ankle
 ]
 
 
 def draw_keypoints_and_edges(
-        frame: np.ndarray,
-        keypoints: np.ndarray,
-        confidence_threshold: float = 0.2
+    frame: np.ndarray, keypoints: np.ndarray, confidence_threshold: float = 0.2
 ) -> None:
     """
     Draws keypoints and skeletal connections on a frame.
@@ -50,7 +68,7 @@ def draw_keypoints_and_edges(
         cv2.circle(frame, (cx, cy), 5, (0, 255, 0), -1)
 
     # Draw edges
-    for (p1, p2) in EDGES:
+    for p1, p2 in EDGES:
         y1, x1, c1 = keypoints[p1]
         y2, x2, c2 = keypoints[p2]
         if (c1 >= confidence_threshold) and (c2 >= confidence_threshold):
@@ -60,9 +78,7 @@ def draw_keypoints_and_edges(
 
 
 def detect_keypoints_movenet(
-        movenet_signature,
-        frame: np.ndarray,
-        input_size: int = 256
+    movenet_signature, frame: np.ndarray, input_size: int = 256
 ) -> np.ndarray:
     """
     Run inference on a single frame using MoveNet with letterboxing, then correct for
@@ -79,7 +95,9 @@ def detect_keypoints_movenet(
     h_orig, w_orig = frame.shape[:2]
 
     # Letterboxed resize with pad to keep aspect ratio in a 256x256 region
-    resized = tf.image.resize_with_pad(tf.expand_dims(image_rgb, axis=0), input_size, input_size)
+    resized = tf.image.resize_with_pad(
+        tf.expand_dims(image_rgb, axis=0), input_size, input_size
+    )
     input_tensor = tf.cast(resized, dtype=tf.int32)
 
     # Run inference
@@ -128,9 +146,7 @@ def detect_keypoints_movenet(
 
 
 def pose_estimation_subsample(
-        video_path: str,
-        subsample_rate: int = 1,
-        scale_factor: float = 1.0
+    video_path: str, subsample_rate: int = 1, scale_factor: float = 1.0
 ) -> None:
     """
     Pose estimation on subsampled frames of a video using MoveNet.
@@ -172,10 +188,12 @@ def pose_estimation_subsample(
             if scale_factor != 1.0:
                 new_width = int(frame.shape[1] * scale_factor)
                 new_height = int(frame.shape[0] * scale_factor)
-                frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+                frame = cv2.resize(
+                    frame, (new_width, new_height), interpolation=cv2.INTER_CUBIC
+                )
 
             cv2.imshow("MoveNet Pose Estimation", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
         frame_idx += 1
@@ -190,7 +208,9 @@ def main():
 
     :return: None.
     """
-    video_path = "data/deadlift_diagonal_view.mp4"  # Replace with your video file path
+    video_path = (
+        "../data/deadlift_diagonal_view.mp4"  # Replace with your video file path
+    )
     subsample_rate = 1  # Process every frame
     scale_factor = 2.0  # Scale for display if desired
     pose_estimation_subsample(video_path, subsample_rate, scale_factor)

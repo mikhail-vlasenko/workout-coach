@@ -15,6 +15,7 @@ import mediapipe as mp
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
+
 def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
     """
     Detect 3D pose landmarks using MediaPipe Pose.
@@ -32,7 +33,7 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
     with mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        min_tracking_confidence=0.5,
     ) as pose:
         results = pose.process(rgb_frame)
 
@@ -53,9 +54,7 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
 
 
 def draw_keypoints_2d(
-    frame: np.ndarray,
-    landmarks_3d: np.ndarray,
-    confidence_threshold: float = 0.5
+    frame: np.ndarray, landmarks_3d: np.ndarray, confidence_threshold: float = 0.5
 ) -> None:
     """
     Draw 2D landmarks on the image (using only x,y) and some edges.
@@ -80,9 +79,7 @@ def draw_keypoints_2d(
 
 
 def pose_estimation_3d_demo(
-    video_path: str,
-    scale_factor: float = 1.0,
-    show_mediapipe_overlay: bool = True
+    video_path: str, scale_factor: float = 1.0, show_mediapipe_overlay: bool = True
 ) -> None:
     """
     Demonstrates 3D pose estimation using MediaPipe Pose on a video.
@@ -101,7 +98,7 @@ def pose_estimation_3d_demo(
     pose = mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        min_tracking_confidence=0.5,
     )
 
     while True:
@@ -121,14 +118,19 @@ def pose_estimation_3d_demo(
         if scale_factor != 1.0:
             disp_width = int(frame.shape[1] * scale_factor)
             disp_height = int(frame.shape[0] * scale_factor)
-            frame = cv2.resize(frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(
+                frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
+            )
 
         # If a person is detected, extract keypoints
         if results.pose_landmarks:
             # Convert landmarks to numpy array
             landmarks_3d = np.array(
-                [[lm.x, lm.y, lm.z, lm.visibility] for lm in results.pose_landmarks.landmark],
-                dtype=np.float32
+                [
+                    [lm.x, lm.y, lm.z, lm.visibility]
+                    for lm in results.pose_landmarks.landmark
+                ],
+                dtype=np.float32,
             )
 
             # Draw the keypoints (2D projection)
@@ -137,9 +139,7 @@ def pose_estimation_3d_demo(
                 # Must convert the display frame back to RGB for mp_drawing
                 disp_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 mp_drawing.draw_landmarks(
-                    disp_rgb,
-                    results.pose_landmarks,
-                    mp_pose.POSE_CONNECTIONS
+                    disp_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
                 )
                 frame = cv2.cvtColor(disp_rgb, cv2.COLOR_RGB2BGR)
             else:
@@ -150,7 +150,7 @@ def pose_estimation_3d_demo(
             #       (landmarks_3d[0, 0], landmarks_3d[0, 1], landmarks_3d[0, 2], landmarks_3d[0, 3]))
 
         cv2.imshow("3D Pose Estimation (MediaPipe)", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
@@ -163,12 +163,10 @@ def main():
     Main function that runs the 3D pose estimation on a sample video.
     """
     # Replace with your own video file or use your webcam with 0
-    video_path = "./data/deadlift_diagonal_view.mp4"
+    video_path = "../data/deadlift_diagonal_view.mp4"
 
     pose_estimation_3d_demo(
-        video_path=video_path,
-        scale_factor=1.0,
-        show_mediapipe_overlay=True
+        video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )
 
 

@@ -1,12 +1,16 @@
 import json
 import os
 from typing import List
+from dotenv import load_dotenv
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+load_dotenv()
+
 from vlm_request import get_vlm_feedback, encode_image_to_base64, nebius_client
+
 
 app = FastAPI()
 
@@ -21,7 +25,6 @@ async def root():
     result = get_vlm_feedback(None, attempt_base64=attempt_base64)
     print("\nAnalysis Result:")
     print(result)
-    return {"message": result}
 
 
 class WorkoutForm(BaseModel):
