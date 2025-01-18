@@ -33,7 +33,7 @@ class WorkoutForm(BaseModel):
 
 
 class Set(BaseModel):
-    weight: str
+    weight: int
     reps: int
 
 class Exercise(BaseModel):
@@ -60,7 +60,7 @@ async def make_workout(workout_form: WorkoutForm):
         prompt += '\nUse the following exercises:\n'
         with open('data/exercise_summary.txt', 'r') as f:
             prompt += ''.join(f.readlines())
-        prompt += '\nOutput the exercises in the provided json format.'
+        prompt += '\nOutput the exercises in the provided json format. Use 0 weight for bodyweight exercises.'
         response = nebius_client.beta.chat.completions.parse(
             model="meta-llama/Llama-3.3-70B-Instruct",
             messages=[
