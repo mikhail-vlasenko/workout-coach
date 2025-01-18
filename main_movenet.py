@@ -190,7 +190,6 @@ def main():
 
     :return: None.
     """
-    # video_path = "./vids/deadlift_diagonal_view.mp4"  # Replace with your video file path
     video_path = "data/deadlift_diagonal_view.mp4"  # Replace with your video file path
     subsample_rate = 1  # Process every frame
     scale_factor = 2.0  # Scale for display if desired
