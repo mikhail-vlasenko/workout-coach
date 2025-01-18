@@ -138,10 +138,14 @@ def analyze_pose(keypoints: np.ndarray, state: dict) -> dict:
             keypoints[mp_pose.PoseLandmark.LEFT_WRIST.value, :3],
             keypoints[mp_pose.PoseLandmark.RIGHT_WRIST.value, :3],
         ),
-        "hands_outside_knees": keypoints[mp_pose.PoseLandmark.LEFT_WRIST.value, 0] > keypoints[mp_pose.PoseLandmark.LEFT_KNEE.value, 0] and keypoints[mp_pose.PoseLandmark.RIGHT_WRIST.value, 0] < keypoints[mp_pose.PoseLandmark.RIGHT_KNEE.value, 0],
+        "hands_outside_knees": keypoints[mp_pose.PoseLandmark.LEFT_WRIST.value, 0]
+        > keypoints[mp_pose.PoseLandmark.LEFT_KNEE.value, 0]
+        and keypoints[mp_pose.PoseLandmark.RIGHT_WRIST.value, 0]
+        < keypoints[mp_pose.PoseLandmark.RIGHT_KNEE.value, 0],
     }
 
     return results
+
 
 def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
     """
@@ -160,7 +164,7 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
     with mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        min_tracking_confidence=0.5,
     ) as pose:
         results = pose.process(rgb_frame)
 
@@ -181,9 +185,7 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
 
 
 def draw_keypoints_2d(
-    frame: np.ndarray,
-    landmarks_3d: np.ndarray,
-    confidence_threshold: float = 0.5
+    frame: np.ndarray, landmarks_3d: np.ndarray, confidence_threshold: float = 0.5
 ) -> None:
     """
     Draw 2D landmarks on the image (using only x,y) and some edges.
@@ -208,9 +210,7 @@ def draw_keypoints_2d(
 
 
 def pose_estimation_3d_demo(
-    video_path: str,
-    scale_factor: float = 1.0,
-    show_mediapipe_overlay: bool = True
+    video_path: str, scale_factor: float = 1.0, show_mediapipe_overlay: bool = True
 ) -> None:
     """
     Demonstrates 3D pose estimation using MediaPipe Pose on a video.
@@ -229,11 +229,16 @@ def pose_estimation_3d_demo(
     pose = mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        min_tracking_confidence=0.5,
     )
 
     # Initialize state for rep counting and timing
-    state = {"rep_count": 0, "below_knees": False, "last_rep_time": None, "rep_time": None}
+    state = {
+        "rep_count": 0,
+        "below_knees": False,
+        "last_rep_time": None,
+        "rep_time": None,
+    }
 
     while True:
         # time.sleep(0.5)
@@ -251,14 +256,19 @@ def pose_estimation_3d_demo(
         if scale_factor != 1.0:
             disp_width = int(frame.shape[1] * scale_factor)
             disp_height = int(frame.shape[0] * scale_factor)
-            frame = cv2.resize(frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(
+                frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
+            )
 
         # If a person is detected, extract keypoints
         if results.pose_landmarks:
             # Convert landmarks to numpy array
             landmarks_3d = np.array(
-                [[lm.x, lm.y, lm.z, lm.visibility] for lm in results.pose_landmarks.landmark],
-                dtype=np.float32
+                [
+                    [lm.x, lm.y, lm.z, lm.visibility]
+                    for lm in results.pose_landmarks.landmark
+                ],
+                dtype=np.float32,
             )
 
             # Analyze pose and update state
@@ -269,7 +279,9 @@ def pose_estimation_3d_demo(
 
             # Display rep count on the frame
             rep_time_display = (
-                f"Last Rep Time: {state['rep_time']:.2f}s" if state["rep_time"] else "Last Rep Time: N/A"
+                f"Last Rep Time: {state['rep_time']:.2f}s"
+                if state["rep_time"]
+                else "Last Rep Time: -"
             )
             cv2.putText(
                 frame,
@@ -279,16 +291,14 @@ def pose_estimation_3d_demo(
                 1,
                 (0, 255, 0),
                 2,
-                cv2.LINE_AA
+                cv2.LINE_AA,
             )
 
             # Draw the keypoints (optional visualization)
             if show_mediapipe_overlay:
                 disp_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 mp_drawing.draw_landmarks(
-                    disp_rgb,
-                    results.pose_landmarks,
-                    mp_pose.POSE_CONNECTIONS
+                    disp_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
                 )
                 frame = cv2.cvtColor(disp_rgb, cv2.COLOR_RGB2BGR)
             else:
@@ -296,7 +306,7 @@ def pose_estimation_3d_demo(
 
         # Show the frame with visualization
         cv2.imshow("3D Pose Estimation (MediaPipe)", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
@@ -312,9 +322,7 @@ def main():
     video_path = "./data/deadlift_diagonal.mp4"
 
     pose_estimation_3d_demo(
-        video_path=video_path,
-        scale_factor=1.0,
-        show_mediapipe_overlay=True
+        video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )
 
 

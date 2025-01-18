@@ -7,9 +7,9 @@ import mediapipe as mp
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
+
 def normalize_pose_orientation(
-    landmarks_3d: np.ndarray,
-    confidence_threshold: float = 0.5
+    landmarks_3d: np.ndarray, confidence_threshold: float = 0.5
 ) -> np.ndarray:
     """
     Normalize the pose by aligning the hips to the origin and the torso to a canonical axis.
@@ -27,7 +27,9 @@ def normalize_pose_orientation(
     right_shoulder = landmarks_3d[RIGHT_SHOULDER]
 
     if left_hip[3] < confidence_threshold or right_hip[3] < confidence_threshold:
-        raise ValueError("Low confidence in hip landmarks, cannot normalize orientation.")
+        raise ValueError(
+            "Low confidence in hip landmarks, cannot normalize orientation."
+        )
 
     # Compute torso origin (hip midpoint)
     hip_center = (left_hip[:3] + right_hip[:3]) / 2
@@ -56,10 +58,11 @@ def normalize_pose_orientation(
             continue
 
         position = np.array([x, y, z]) - hip_center  # Translate to origin
-        position = rotation_matrix @ position        # Rotate to align torso
+        position = rotation_matrix @ position  # Rotate to align torso
         normalized_landmarks[i] = position
 
     return normalized_landmarks
+
 
 def draw_connections(landmarks, view, edges, color, scale=1.0):
     """
@@ -74,18 +77,11 @@ def draw_connections(landmarks, view, edges, color, scale=1.0):
     for start, end in edges:
         pt1 = landmarks[start] * scale
         pt2 = landmarks[end] * scale
-        cv2.line(
-            view,
-            (int(pt1[0]), int(pt1[1])),
-            (int(pt2[0]), int(pt2[1])),
-            color,
-            2
-        )
+        cv2.line(view, (int(pt1[0]), int(pt1[1])), (int(pt2[0]), int(pt2[1])), color, 2)
+
 
 def pose_estimation_3d_demo_with_projections(
-    video_path: str,
-    scale_factor: float = 1.0,
-    show_mediapipe_overlay: bool = True
+    video_path: str, scale_factor: float = 1.0, show_mediapipe_overlay: bool = True
 ) -> None:
     """
     Demonstrates 3D pose estimation using MediaPipe Pose on a video,
@@ -105,17 +101,23 @@ def pose_estimation_3d_demo_with_projections(
     pose = mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        min_tracking_confidence=0.5,
     )
 
     # Define skeletal connections
     edges = [
-        (23, 24), (23, 11), (24, 12),  # Hips to shoulders
+        (23, 24),
+        (23, 11),
+        (24, 12),  # Hips to shoulders
         (11, 12),  # Shoulders
-        (11, 13), (13, 15),  # Left leg
-        (12, 14), (14, 16),  # Right leg
-        (11, 9), (9, 7),  # Left arm
-        (12, 10), (10, 8),  # Right arm
+        (11, 13),
+        (13, 15),  # Left leg
+        (12, 14),
+        (14, 16),  # Right leg
+        (11, 9),
+        (9, 7),  # Left arm
+        (12, 10),
+        (10, 8),  # Right arm
     ]
 
     while True:
@@ -131,7 +133,9 @@ def pose_estimation_3d_demo_with_projections(
         if scale_factor != 1.0:
             disp_width = int(frame.shape[1] * scale_factor)
             disp_height = int(frame.shape[0] * scale_factor)
-            frame = cv2.resize(frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(
+                frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
+            )
 
         # Convert BGR -> RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -147,8 +151,11 @@ def pose_estimation_3d_demo_with_projections(
         if results.pose_landmarks:
             # Convert landmarks to numpy array
             landmarks_3d = np.array(
-                [[lm.x, lm.y, lm.z, lm.visibility] for lm in results.pose_landmarks.landmark],
-                dtype=np.float32
+                [
+                    [lm.x, lm.y, lm.z, lm.visibility]
+                    for lm in results.pose_landmarks.landmark
+                ],
+                dtype=np.float32,
             )
 
             # Normalize the landmarks
@@ -186,12 +193,13 @@ def pose_estimation_3d_demo_with_projections(
         cv2.imshow("Front View (X-Y)", front_view)
         cv2.imshow("Top View (Y-Z)", top_view)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
     pose.close()
     cv2.destroyAllWindows()
+
 
 def main():
     """
@@ -201,10 +209,9 @@ def main():
     video_path = "./data/deadlift_diagonal_view.mp4"
 
     pose_estimation_3d_demo_with_projections(
-        video_path=video_path,
-        scale_factor=1.0,
-        show_mediapipe_overlay=True
+        video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )
+
 
 if __name__ == "__main__":
     main()

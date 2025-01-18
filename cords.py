@@ -4,33 +4,36 @@ import matplotlib.pyplot as plt
 
 # Example realistic landmarks for a standing person (simplified and exaggerated for demonstration)
 # MediaPipe format: [x, y, z, visibility]
-example_landmarks = np.array([
-    [0.5, 0.8, 0.0, 1.0],  # Nose
-    [0.45, 0.75, -0.02, 1.0],  # Left Eye
-    [0.55, 0.75, -0.02, 1.0],  # Right Eye
-    [0.4, 0.72, -0.04, 1.0],  # Left Ear
-    [0.6, 0.72, -0.04, 1.0],  # Right Ear
-    [0.45, 0.6, -0.05, 1.0],  # Left Shoulder
-    [0.55, 0.6, -0.05, 1.0],  # Right Shoulder
-    [0.4, 0.5, -0.05, 1.0],  # Left Elbow
-    [0.6, 0.5, -0.05, 1.0],  # Right Elbow
-    [0.35, 0.4, -0.05, 1.0],  # Left Wrist
-    [0.65, 0.4, -0.05, 1.0],  # Right Wrist
-    [0.48, 0.4, 0.0, 1.0],  # Left Hip
-    [0.52, 0.4, 0.0, 1.0],  # Right Hip
-    [0.45, 0.2, 0.0, 1.0],  # Left Knee
-    [0.55, 0.2, 0.0, 1.0],  # Right Knee
-    [0.43, 0.0, 0.02, 1.0],  # Left Ankle
-    [0.57, 0.0, 0.02, 1.0],  # Right Ankle
-])
+example_landmarks = np.array(
+    [
+        [0.5, 0.8, 0.0, 1.0],  # Nose
+        [0.45, 0.75, -0.02, 1.0],  # Left Eye
+        [0.55, 0.75, -0.02, 1.0],  # Right Eye
+        [0.4, 0.72, -0.04, 1.0],  # Left Ear
+        [0.6, 0.72, -0.04, 1.0],  # Right Ear
+        [0.45, 0.6, -0.05, 1.0],  # Left Shoulder
+        [0.55, 0.6, -0.05, 1.0],  # Right Shoulder
+        [0.4, 0.5, -0.05, 1.0],  # Left Elbow
+        [0.6, 0.5, -0.05, 1.0],  # Right Elbow
+        [0.35, 0.4, -0.05, 1.0],  # Left Wrist
+        [0.65, 0.4, -0.05, 1.0],  # Right Wrist
+        [0.48, 0.4, 0.0, 1.0],  # Left Hip
+        [0.52, 0.4, 0.0, 1.0],  # Right Hip
+        [0.45, 0.2, 0.0, 1.0],  # Left Knee
+        [0.55, 0.2, 0.0, 1.0],  # Right Knee
+        [0.43, 0.0, 0.02, 1.0],  # Left Ankle
+        [0.57, 0.0, 0.02, 1.0],  # Right Ankle
+    ]
+)
 
 # Reference distance (e.g., measured hip distance in meters)
 reference_distance = 0.05  # 30 cm
 
+
 def normalize_pose_orientation(
     landmarks_3d: np.ndarray,
     reference_distance: float,
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = 0.5,
 ) -> np.ndarray:
     """
     Normalizes the pose's orientation by aligning the torso to a canonical frame.
@@ -51,7 +54,9 @@ def normalize_pose_orientation(
     right_shoulder = landmarks_3d[RIGHT_SHOULDER]
 
     if left_hip[3] < confidence_threshold or right_hip[3] < confidence_threshold:
-        raise ValueError("Low confidence in hip landmarks, cannot normalize orientation.")
+        raise ValueError(
+            "Low confidence in hip landmarks, cannot normalize orientation."
+        )
 
     hip_center = (left_hip[:3] + right_hip[:3]) / 2
     shoulder_center = (left_shoulder[:3] + right_shoulder[:3]) / 2
@@ -79,12 +84,14 @@ def normalize_pose_orientation(
 
     return absolute_landmarks
 
+
 # Normalize the example landmarks
 normalized_landmarks = normalize_pose_orientation(example_landmarks, reference_distance)
 
+
 # Function to plot 3D landmarks
 def plot_landmarks_3d(landmarks, title, ax):
-    ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2], c='r', marker='o')
+    ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2], c="r", marker="o")
     ax.set_title(title)
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
@@ -93,15 +100,23 @@ def plot_landmarks_3d(landmarks, title, ax):
     ax.set_ylim([-0.5, 0.5])
     ax.set_zlim([-0.5, 0.5])
 
+
 # Define skeletal connections for keypoints (edges to connect landmarks)
 edges = [
-    (11, 12), (11, 5), (12, 6),  # Hips to shoulders
+    (11, 12),
+    (11, 5),
+    (12, 6),  # Hips to shoulders
     (5, 6),  # Shoulders
-    (5, 7), (7, 9),  # Left arm
-    (6, 8), (8, 10),  # Right arm
-    (11, 13), (13, 15),  # Left leg
-    (12, 14), (14, 16),  # Right leg
+    (5, 7),
+    (7, 9),  # Left arm
+    (6, 8),
+    (8, 10),  # Right arm
+    (11, 13),
+    (13, 15),  # Left leg
+    (12, 14),
+    (14, 16),  # Right leg
 ]
+
 
 # Function to plot 3D landmarks with connections
 def plot_landmarks_with_connections(landmarks, title, ax, edges):
@@ -113,14 +128,22 @@ def plot_landmarks_with_connections(landmarks, title, ax, edges):
     :param ax: Matplotlib 3D axis.
     :param edges: List of tuples representing connections between keypoints.
     """
-    ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2], c='r', marker='o', label='Keypoints')
+    ax.scatter(
+        landmarks[:, 0],
+        landmarks[:, 1],
+        landmarks[:, 2],
+        c="r",
+        marker="o",
+        label="Keypoints",
+    )
     for edge in edges:
         start, end = edge
         ax.plot(
             [landmarks[start, 0], landmarks[end, 0]],
             [landmarks[start, 1], landmarks[end, 1]],
             [landmarks[start, 2], landmarks[end, 2]],
-            c='b', label='Connections' if edge == edges[0] else None
+            c="b",
+            label="Connections" if edge == edges[0] else None,
         )
     ax.set_title(title)
     ax.set_xlabel("X")
@@ -131,13 +154,18 @@ def plot_landmarks_with_connections(landmarks, title, ax, edges):
     ax.set_ylim([-0.5, 0.5])
     ax.set_zlim([-0.5, 0.5])
 
+
 # Plot original and normalized landmarks with connections
 fig = plt.figure(figsize=(12, 6))
-ax1 = fig.add_subplot(121, projection='3d')
-ax2 = fig.add_subplot(122, projection='3d')
+ax1 = fig.add_subplot(121, projection="3d")
+ax2 = fig.add_subplot(122, projection="3d")
 
-plot_landmarks_with_connections(example_landmarks[:, :3], "Original Landmarks", ax1, edges)
-plot_landmarks_with_connections(normalized_landmarks, "Normalized Landmarks", ax2, edges)
+plot_landmarks_with_connections(
+    example_landmarks[:, :3], "Original Landmarks", ax1, edges
+)
+plot_landmarks_with_connections(
+    normalized_landmarks, "Normalized Landmarks", ax2, edges
+)
 
 plt.tight_layout()
 plt.show()
@@ -147,13 +175,13 @@ fig = plt.figure(figsize=(18, 6))
 
 # Define the orthogonal views
 view_angles = [
-    (90, 0),   # Side view (X-Z plane)
-    (0, 0),    # Front view (X-Y plane)
-    (0, 90),   # Top view (Y-Z plane)
+    (90, 0),  # Side view (X-Z plane)
+    (0, 0),  # Front view (X-Y plane)
+    (0, 90),  # Top view (Y-Z plane)
 ]
 
 for i, (elev, azim) in enumerate(view_angles, start=1):
-    ax = fig.add_subplot(1, 3, i, projection='3d')
+    ax = fig.add_subplot(1, 3, i, projection="3d")
     plot_landmarks_with_connections(normalized_landmarks, f"View {i}", ax, edges)
     ax.view_init(elev=elev, azim=azim)  # Set the viewing angles
 

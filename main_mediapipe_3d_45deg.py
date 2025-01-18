@@ -30,9 +30,9 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     with mp_pose.Pose(
-            static_image_mode=False,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+        static_image_mode=False,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5,
     ) as pose:
         results = pose.process(rgb_frame)
 
@@ -50,8 +50,7 @@ def detect_keypoints_mediapipe_3d(frame: np.ndarray) -> np.ndarray:
 
 
 def rotate_landmarks_y_axis(
-        landmarks_3d: np.ndarray,
-        angle_degrees: float
+    landmarks_3d: np.ndarray, angle_degrees: float
 ) -> np.ndarray:
     """
     Rotate the 3D landmarks around the Y axis by a given angle (in degrees).
@@ -70,11 +69,14 @@ def rotate_landmarks_y_axis(
     #  [ cosθ   0   sinθ ]
     #  [   0    1     0  ]
     #  [-sinθ   0   cosθ ]
-    R = np.array([
-        [np.cos(theta), 0, np.sin(theta)],
-        [0, 1, 0],
-        [-np.sin(theta), 0, np.cos(theta)]
-    ], dtype=np.float32)
+    R = np.array(
+        [
+            [np.cos(theta), 0, np.sin(theta)],
+            [0, 1, 0],
+            [-np.sin(theta), 0, np.cos(theta)],
+        ],
+        dtype=np.float32,
+    )
 
     rotated = np.zeros_like(landmarks_3d)
     for i in range(33):
@@ -88,11 +90,11 @@ def rotate_landmarks_y_axis(
 
 
 def draw_pose_2d_custom(
-        image: np.ndarray,
-        landmarks_3d: np.ndarray,
-        connections,
-        visibility_threshold=0.5,
-        color=(0, 255, 0)
+    image: np.ndarray,
+    landmarks_3d: np.ndarray,
+    connections,
+    visibility_threshold=0.5,
+    color=(0, 255, 0),
 ):
     """
     Draw 2D points + connections onto an image using the landmarks' (x,y).
@@ -106,7 +108,7 @@ def draw_pose_2d_custom(
     """
     h, w, _ = image.shape
     # Draw connections first
-    for (i1, i2) in connections:
+    for i1, i2 in connections:
         vis1 = landmarks_3d[i1, 3]
         vis2 = landmarks_3d[i2, 3]
         if vis1 < visibility_threshold or vis2 < visibility_threshold:
@@ -128,9 +130,7 @@ def draw_pose_2d_custom(
 
 
 def pose_estimation_3d_demo(
-        video_path: str,
-        scale_factor: float = 1.0,
-        show_mediapipe_overlay: bool = True
+    video_path: str, scale_factor: float = 1.0, show_mediapipe_overlay: bool = True
 ) -> None:
     """
     Demonstrates 3D pose estimation using MediaPipe Pose on a video.
@@ -149,7 +149,7 @@ def pose_estimation_3d_demo(
     pose = mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
+        min_tracking_confidence=0.5,
     )
 
     while True:
@@ -166,7 +166,9 @@ def pose_estimation_3d_demo(
         if scale_factor != 1.0:
             disp_width = int(frame.shape[1] * scale_factor)
             disp_height = int(frame.shape[0] * scale_factor)
-            frame = cv2.resize(frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(
+                frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
+            )
 
         # Process with MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -179,17 +181,18 @@ def pose_estimation_3d_demo(
         if results.pose_landmarks:
             # Convert landmarks to numpy
             landmarks_3d = np.array(
-                [[lm.x, lm.y, lm.z, lm.visibility] for lm in results.pose_landmarks.landmark],
-                dtype=np.float32
+                [
+                    [lm.x, lm.y, lm.z, lm.visibility]
+                    for lm in results.pose_landmarks.landmark
+                ],
+                dtype=np.float32,
             )
 
             # Show normal pose overlay in the main frame
             if show_mediapipe_overlay:
                 disp_rgb = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
                 mp_drawing.draw_landmarks(
-                    disp_rgb,
-                    results.pose_landmarks,
-                    mp_pose.POSE_CONNECTIONS
+                    disp_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
                 )
                 display_frame = cv2.cvtColor(disp_rgb, cv2.COLOR_RGB2BGR)
             else:
@@ -198,7 +201,7 @@ def pose_estimation_3d_demo(
                     landmarks_3d,
                     mp_pose.POSE_CONNECTIONS,
                     visibility_threshold=0.5,
-                    color=(0, 255, 0)
+                    color=(0, 255, 0),
                 )
 
             # ---------------
@@ -213,7 +216,7 @@ def pose_estimation_3d_demo(
             h, w, _ = display_frame.shape
             rotated_view = np.zeros((h, w, 3), dtype=np.uint8)
 
-            # IMPORTANT: the rotated x,y,z are still in 'normalized' space. 
+            # IMPORTANT: the rotated x,y,z are still in 'normalized' space.
             # If the rotation pushes x,y out of [0..1], we won't see them.
             # For a basic demo, let's simply clamp them to [0..1].
             # For a more advanced approach, you might recenter or scale them.
@@ -228,7 +231,7 @@ def pose_estimation_3d_demo(
                 rotated_3d_clamped,
                 mp_pose.POSE_CONNECTIONS,
                 visibility_threshold=0.5,
-                color=(0, 255, 255)
+                color=(0, 255, 255),
             )
 
             # Show that second image in a new window
@@ -237,7 +240,7 @@ def pose_estimation_3d_demo(
         # Show the main view
         cv2.imshow("3D Pose Estimation (MediaPipe)", display_frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
@@ -254,9 +257,7 @@ def main():
     """
     video_path = "./data/deadlift_diagonal_view.mp4"
     pose_estimation_3d_demo(
-        video_path=video_path,
-        scale_factor=1.0,
-        show_mediapipe_overlay=True
+        video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )
 
 
