@@ -1,6 +1,8 @@
 .env
 .idea/
 
+/data
+
 *.mp4
 *.jpeg
 *.jpg
