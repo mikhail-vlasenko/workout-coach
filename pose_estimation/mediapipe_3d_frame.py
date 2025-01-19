@@ -6,9 +6,8 @@ Pose estimation with MediaPipe Pose, outputting 3D coordinates (x, y, z).
 """
 
 import cv2
-import time
-import numpy as np
 import mediapipe as mp
+import numpy as np
 
 # MediaPipe Pose includes 33 keypoints (landmarks).
 # We'll import the drawing utils for convenience if you want built-in visualization.
@@ -96,7 +95,7 @@ def are_arms_below_knees(keypoints: np.ndarray) -> bool:
     )  # For front view; adjust as needed for other views.
 
 
-def analyze_pose(keypoints: np.ndarray, state: dict) -> dict:
+def analyze_pose(keypoints: np.ndarray) -> dict:
     """
     Perform analysis on pose keypoints and track repetitions with timing.
 
@@ -107,17 +106,7 @@ def analyze_pose(keypoints: np.ndarray, state: dict) -> dict:
     if keypoints.size == 0:
         return {}
 
-    current_time = time.time()
     arms_below_knees = are_arms_below_knees(keypoints)
-
-    # Check for rep transitions
-    if state.get("below_knees") and not arms_below_knees:
-        state["rep_count"] += 1
-        if state["last_rep_time"] is not None:
-            state["rep_time"] = current_time - state["last_rep_time"]
-        state["last_rep_time"] = current_time
-
-    state["below_knees"] = arms_below_knees
 
     results = {
         "torso_leg_angle": compute_torso_leg_angle(keypoints),
@@ -132,8 +121,6 @@ def analyze_pose(keypoints: np.ndarray, state: dict) -> dict:
             keypoints[mp_pose.PoseLandmark.RIGHT_SHOULDER.value, :3],
         ),
         "are_arms_below_knees": arms_below_knees,
-        "rep_count": state["rep_count"],
-        "rep_time": state.get("rep_time", None),  # Time for the last rep
         "grip_width": compute_distance(
             keypoints[mp_pose.PoseLandmark.LEFT_WRIST.value, :3],
             keypoints[mp_pose.PoseLandmark.RIGHT_WRIST.value, :3],
@@ -209,14 +196,57 @@ def draw_keypoints_2d(
         cv2.circle(frame, (px, py), 5, (0, 255, 0), -1)
 
 
-def pose_estimation_3d_demo(
+def post_estimation_3d_from_frame(
+    bgr_frame, pose_api, show_mediapipe_overlay, scale_factor
+):
+    rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
+    results = pose_api.process(rgb_frame)
+
+    # Optionally resize for display
+    if scale_factor != 1.0:
+        disp_width = int(bgr_frame.shape[1] * scale_factor)
+        disp_height = int(bgr_frame.shape[0] * scale_factor)
+        bgr_frame = cv2.resize(
+            bgr_frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
+        )
+
+    # If a person is detected, extract keypoints
+    if results.pose_landmarks:
+        # Convert landmarks to numpy array
+        landmarks_3d = np.array(
+            [
+                [lm.x, lm.y, lm.z, lm.visibility]
+                for lm in results.pose_landmarks.landmark
+            ],
+            dtype=np.float32,
+        )
+
+        # Analyze pose and update state
+        analysis_results = analyze_pose(landmarks_3d)
+
+        # Print results to console
+        print(analysis_results)
+
+        # Draw the keypoints (optional visualization)
+        if show_mediapipe_overlay:
+            disp_rgb = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
+            mp_drawing.draw_landmarks(
+                disp_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
+            )
+            bgr_frame = cv2.cvtColor(disp_rgb, cv2.COLOR_RGB2BGR)
+        else:
+            draw_keypoints_2d(bgr_frame, landmarks_3d, confidence_threshold=0.5)
+        return bgr_frame
+
+
+def pose_estimation_3d_from_video(
     video_path: str, scale_factor: float = 1.0, show_mediapipe_overlay: bool = True
 ) -> None:
     """
-    Demonstrates 3D pose estimation using MediaPipe Pose on a video.
+    Demonstrates 3D pose_api estimation using MediaPipe Pose on a video.
 
     :param video_path: Path to the input video file.
-    :param scale_factor: Factor by which to scale the frame for display.
+    :param scale_factor: Factor by which to scale the bgr_frame for display.
     :param show_mediapipe_overlay: If True, use MediaPipe's own drawing function.
     :return: None.
     """
@@ -226,91 +256,29 @@ def pose_estimation_3d_demo(
         return
 
     # Initialize MediaPipe Pose once outside the loop for performance.
-    pose = mp_pose.Pose(
+    pose_api = mp_pose.Pose(
         static_image_mode=False,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5,
     )
 
-    # Initialize state for rep counting and timing
-    state = {
-        "rep_count": 0,
-        "below_knees": False,
-        "last_rep_time": None,
-        "rep_time": None,
-    }
-
     while True:
-        # time.sleep(0.5)
-
-        ret, frame = cap.read()
+        ret, bgr_frame = cap.read()
         if not ret:
             cap = cv2.VideoCapture(video_path)
-            ret, frame = cap.read()
+            ret, bgr_frame = cap.read()
 
-        # Convert BGR -> RGB
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = pose.process(rgb_frame)
+        bgr_frame_viz = post_estimation_3d_from_frame(
+            bgr_frame, pose_api, show_mediapipe_overlay, scale_factor
+        )
 
-        # Optionally resize for display
-        if scale_factor != 1.0:
-            disp_width = int(frame.shape[1] * scale_factor)
-            disp_height = int(frame.shape[0] * scale_factor)
-            frame = cv2.resize(
-                frame, (disp_width, disp_height), interpolation=cv2.INTER_AREA
-            )
-
-        # If a person is detected, extract keypoints
-        if results.pose_landmarks:
-            # Convert landmarks to numpy array
-            landmarks_3d = np.array(
-                [
-                    [lm.x, lm.y, lm.z, lm.visibility]
-                    for lm in results.pose_landmarks.landmark
-                ],
-                dtype=np.float32,
-            )
-
-            # Analyze pose and update state
-            analysis_results = analyze_pose(landmarks_3d, state)
-
-            # Print results to console
-            print(analysis_results)
-
-            # Display rep count on the frame
-            rep_time_display = (
-                f"Last Rep Time: {state['rep_time']:.2f}s"
-                if state["rep_time"]
-                else "Last Rep Time: -"
-            )
-            cv2.putText(
-                frame,
-                f"Reps: {state['rep_count']} | {rep_time_display}",
-                (50, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                2,
-                cv2.LINE_AA,
-            )
-
-            # Draw the keypoints (optional visualization)
-            if show_mediapipe_overlay:
-                disp_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                mp_drawing.draw_landmarks(
-                    disp_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
-                )
-                frame = cv2.cvtColor(disp_rgb, cv2.COLOR_RGB2BGR)
-            else:
-                draw_keypoints_2d(frame, landmarks_3d, confidence_threshold=0.5)
-
-        # Show the frame with visualization
-        cv2.imshow("3D Pose Estimation (MediaPipe)", frame)
+        # Show the bgr_frame with visualization
+        cv2.imshow("3D Pose Estimation (MediaPipe)", bgr_frame_viz)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
-    pose.close()
+    pose_api.close()
     cv2.destroyAllWindows()
 
 
@@ -321,7 +289,7 @@ def main():
     # Replace with your own video file or use your webcam with 0
     video_path = "../data/deadlift_diagonal.mp4"
 
-    pose_estimation_3d_demo(
+    pose_estimation_3d_from_video(
         video_path=video_path, scale_factor=1.0, show_mediapipe_overlay=True
     )
 
