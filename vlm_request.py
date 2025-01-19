@@ -15,7 +15,7 @@ nebius_client = OpenAI(
 
 def json_llm_request(prompt, pydantic_model):
     response = nebius_client.beta.chat.completions.parse(
-                model="meta-llama/Llama-3.3-70B-Instruct",
+                model="meta-llama/Llama-3.3-70B-Instruct-fast",
                 messages=[
                     {
                         "role": "user",

@@ -31,7 +31,8 @@ async def put_workout_in_db(workout_response: WorkoutResponse, user_id: uuid.UUI
             weight, reps = set_data.split('x')
 
             def remove_non_digits(string):
-                return re.sub(r'\D', '', string)
+                # keep only digits and '.' for floats
+                return re.sub(r'[^\d.]', '', string)
             weight = remove_non_digits(weight)
             reps = remove_non_digits(reps)
             workout_set = WorkoutSet(
