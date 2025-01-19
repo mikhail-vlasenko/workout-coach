@@ -6,3 +6,7 @@ requests~=2.32.3
 openai~=1.59.8
 numpy~=2.2.2
 matplotlib~=3.10.0
+mediapipe~=0.10.20
+starlette~=0.41.3
+opencv-python~=4.11.0.86
+tensorflow~=2.18.0
