@@ -13,7 +13,6 @@ supabase = create_client(
 )
 
 
-
 class WorkoutSet(BaseModel):
     exercise_name: str
     set_number: int
@@ -29,10 +28,9 @@ class WorkoutSession(BaseModel):
     title: str
     description: Optional[str] = None
     sets: List[WorkoutSet]
-    notes: Optional[str] = None
 
 
-async def get_latest_workout(user_id: str):
+async def get_latest_workout(user_id: uuid.UUID):
     # Get the most recent workout session
     session_response = supabase.table("workout_sessions") \
         .select("*") \
@@ -66,7 +64,7 @@ async def create_workout_session(workout: WorkoutSession):
         "template_id": None,
         "title": workout.title,
         "started_at": datetime.utcnow().isoformat(),
-        "notes": workout.notes
+        "description": workout.description
     }
 
     session_response = supabase.table("workout_sessions").insert(session_data).execute()
