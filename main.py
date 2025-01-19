@@ -30,11 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-pose_api = mp_pose.Pose(
-    static_image_mode=False,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5,
-)
 
 @app.get("/")
 async def root():
