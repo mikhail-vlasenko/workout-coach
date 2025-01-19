@@ -10,15 +10,61 @@ from datetime import datetime
 from db import WorkoutSet, WorkoutSession, create_workout_session
 
 
-class Exercise(BaseModel):
+class Set(BaseModel):
+    weight: float
+    reps: int
+
+class UnprocessedExercise(BaseModel):
     name: str
     target_muscle: str
     sets: List[str]  # set is "weight x reps"
+
+class Exercise(BaseModel):
+    name: str
+    target_muscle: str
+    sets: List[Set]
+
+class WorkoutUnprocessedResponse(BaseModel):
+    title: str
+    exercises: List[UnprocessedExercise]
+    description: str
 
 class WorkoutResponse(BaseModel):
     title: str
     exercises: List[Exercise]
     description: str
+
+
+def convert_unprocessed_to_processed(unprocessed: WorkoutUnprocessedResponse) -> WorkoutResponse:
+    processed_exercises = []
+
+    for exercise in unprocessed.exercises:
+        processed_sets = []
+        for set_str in exercise.sets:
+            # Split the set string and clean up any whitespace
+            try:
+                weight_str, reps_str = set_str.split('x')
+                weight_str = re.sub(r'[^\d.]', '', weight_str.strip())
+                reps_str = re.sub(r'[^\d.]', '', reps_str.strip())
+
+                processed_sets.append(Set(
+                    weight=float(weight_str),
+                    reps=int(reps_str)
+                ))
+            except (ValueError, AttributeError) as e:
+                raise ValueError(f"Invalid set format for exercise {exercise.name}: {set_str}") from e
+
+        processed_exercises.append(Exercise(
+            name=exercise.name,
+            target_muscle=exercise.target_muscle,
+            sets=processed_sets
+        ))
+
+    return WorkoutResponse(
+        title=unprocessed.title,
+        exercises=processed_exercises,
+        description=unprocessed.description
+    )
 
 
 async def put_workout_in_db(workout_response: WorkoutResponse, user_id: uuid.UUID):
@@ -28,18 +74,11 @@ async def put_workout_in_db(workout_response: WorkoutResponse, user_id: uuid.UUI
 
     for exercise in workout_response.exercises:
         for set_data in exercise.sets:
-            weight, reps = set_data.split('x')
-
-            def remove_non_digits(string):
-                # keep only digits and '.' for floats
-                return re.sub(r'[^\d.]', '', string)
-            weight = remove_non_digits(weight)
-            reps = remove_non_digits(reps)
             workout_set = WorkoutSet(
                 exercise_name=exercise.name,
                 set_number=set_number,
-                weight=float(weight),  # Convert to float as required by WorkoutSet
-                reps=int(reps),
+                weight=set_data.weight,
+                reps=set_data.reps,
                 is_personal_record=False,  # Default value
                 completed_at=datetime.utcnow()
             )
@@ -58,7 +97,7 @@ async def put_workout_in_db(workout_response: WorkoutResponse, user_id: uuid.UUI
     return result
 
 
-def convert_workout_to_prompt_format(workout_data: Dict) -> WorkoutResponse:
+def convert_workout_to_prompt_format(workout_data: Dict) -> WorkoutUnprocessedResponse:
     session = workout_data['session']
     sets = workout_data['sets']
 
@@ -75,7 +114,7 @@ def convert_workout_to_prompt_format(workout_data: Dict) -> WorkoutResponse:
     for exercise_name, sets_list in exercise_sets.items():
         # Note: In a real system, you'd want to look up the target muscle
         # from your exercise database. For now, we'll use a placeholder
-        exercise = Exercise(
+        exercise = UnprocessedExercise(
             name=exercise_name,
             target_muscle="unknown",  # This should be fetched from exercise database
             sets=sets_list
@@ -83,7 +122,7 @@ def convert_workout_to_prompt_format(workout_data: Dict) -> WorkoutResponse:
         exercises.append(exercise)
 
     # Create the WorkoutResponse
-    workout_response = WorkoutResponse(
+    workout_response = WorkoutUnprocessedResponse(
         title=session['title'],
         exercises=exercises,
         description=session.get('description', '')

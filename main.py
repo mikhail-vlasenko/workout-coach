@@ -3,6 +3,7 @@ import os
 import uuid
 from typing import List
 from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -12,12 +13,21 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from workout_response import WorkoutResponse, put_workout_in_db, convert_workout_to_prompt_format
+from workout_response import WorkoutUnprocessedResponse, put_workout_in_db, convert_workout_to_prompt_format, \
+    convert_unprocessed_to_processed, WorkoutResponse
 
 from vlm_request import get_vlm_feedback, encode_image_to_base64, nebius_client, json_llm_request
 
 app = FastAPI()
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
@@ -42,14 +52,16 @@ class WorkoutForm(BaseModel):
 
 
 @app.post("/make-workout")
-async def make_workout(workout_form: WorkoutForm):
+async def make_workout(workout_form: WorkoutForm) -> WorkoutResponse:
+    workout_form.user_id = uuid.UUID("a879f12d-8834-4987-859a-0d53e72d76a3")
+
     last_workout = None
     try:
         last_workout = convert_workout_to_prompt_format(await get_latest_workout(workout_form.user_id))
     except Exception as e:
-        print(f"Error fetching last workout: {e}")
+        print(f"Error fetching last workout: {e}. Continuing without it.")
 
-    def get_exercises(workout_form: WorkoutForm) -> WorkoutResponse:
+    def get_exercises(workout_form: WorkoutForm) -> WorkoutUnprocessedResponse:
         prompt = 'You are a personal trainer creating a workout plan for a client.'
         prompt += f'\nYour client is a {workout_form.age}-year-old and weighs {workout_form.weight} kg.'
         prompt += (f'\nCreate an approximately {workout_form.length}-minute '
@@ -63,7 +75,7 @@ async def make_workout(workout_form: WorkoutForm):
         with open('data/exercise_summary.txt', 'r') as f:
             prompt += ''.join(f.readlines())
         prompt += '\nOutput the exercises in the provided json format. Write set as "weight x reps". Vary the reps and weight between sets.'
-        prompt += '\nUse 0 weight for bodyweight exercises.'
+        prompt += '\nUse 0 weight for bodyweight exercises. Use up to 5 exercises in total'
         prompt += '\nIn the description, include a short (2 sentences max) explanation of why you created the workout like this.'
         if last_workout:
             try:
@@ -71,10 +83,11 @@ async def make_workout(workout_form: WorkoutForm):
                 prompt += json.dumps(last_workout.dict(), indent=4)
             except Exception as e:
                 print(f"Error adding last workout to prompt: {e}")
-        return json_llm_request(prompt, WorkoutResponse)
+        return json_llm_request(prompt, WorkoutUnprocessedResponse)
 
     workout = get_exercises(workout_form)
-    await put_workout_in_db(workout, workout_form.user_id)
+    workout = convert_unprocessed_to_processed(workout)
+    # await put_workout_in_db(workout, workout_form.user_id)
     return workout
 
 @app.get("/one-rep-left")

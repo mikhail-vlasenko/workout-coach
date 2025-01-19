@@ -29,6 +29,14 @@ class WorkoutSession(BaseModel):
     description: Optional[str] = None
     sets: List[WorkoutSet]
 
+async def add_user(user_id: uuid.UUID, username: str):
+    user_data = {
+        "id": str(user_id),
+        "username": username
+    }
+    response = supabase.table("profiles").upsert(user_data).execute()
+    return response.data
+
 
 async def get_latest_workout(user_id: uuid.UUID):
     # Get the most recent workout session
@@ -58,6 +66,7 @@ async def get_latest_workout(user_id: uuid.UUID):
 
 
 async def create_workout_session(workout: WorkoutSession):
+    await add_user(workout.user_id, "Test User")
     # Create the workout session first
     session_data = {
         "user_id": str(workout.user_id),
