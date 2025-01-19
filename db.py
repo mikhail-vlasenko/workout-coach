@@ -1,11 +1,11 @@
+import os
 import uuid
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
+
+from fastapi import HTTPException
+from pydantic import BaseModel
 from supabase import create_client
-import os
 
 supabase = create_client(
     supabase_url=os.getenv("SUPABASE_URL"),
