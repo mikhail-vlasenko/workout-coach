@@ -7,8 +7,6 @@ from typing import List
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 
-from pose_estimation.mediapipe_3d_frame import post_estimation_3d_from_frame
-
 load_dotenv()
 
 from db import get_latest_workout
@@ -22,10 +20,6 @@ from workout_response import WorkoutUnprocessedResponse, convert_workout_to_prom
 
 from vlm_request import get_vlm_feedback, encode_image_to_base64, json_llm_request
 
-import mediapipe as mp
-
-mp_pose = mp.solutions.pose
-mp_drawing = mp.solutions.drawing_utils
 
 app = FastAPI()
 
@@ -64,39 +58,39 @@ class WorkoutForm(BaseModel):
     length: int  # in minutes
     comment: str  # user's comments for the workout creation "I'm feeling strong today"
 
-@app.post("/process-image")
-async def process_image(base64_image: bytes):
-    import cv2
-    import numpy as np
-    """
-    Accepts a base64 encoded image in the request payload, decodes it,
-    and re-encodes it before returning it as a base64 encoded string.
-    """
-    try:
-        if not base64_image:
-            return {"error": "Base64 encoded image is required."}
-
-        # Decode the base64 image
-        decoded_image = base64.b64decode(base64_image)
-
-        # Convert to NumPy array
-        np_array = np.frombuffer(decoded_image, np.uint8)
-
-        # Convert to OpenCV image format
-        cv_image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
-
-        # Process cv_image if needed (e.g., transformations, analysis)
-        bgr_frame_viz = post_estimation_3d_from_frame(
-            cv_image, pose_api, True, 1.0
-        )
-
-        # Re-encode the OpenCV image back to Base64
-        _, buffer = cv2.imencode('.jpg', bgr_frame_viz)
-        re_encoded_image = base64.b64encode(buffer).decode("utf-8")
-
-        return re_encoded_image
-    except Exception as e:
-        return f"An error occurred: {str(e)}"
+# @app.post("/process-image")
+# async def process_image(base64_image: bytes):
+#     import cv2
+#     import numpy as np
+#     """
+#     Accepts a base64 encoded image in the request payload, decodes it,
+#     and re-encodes it before returning it as a base64 encoded string.
+#     """
+#     try:
+#         if not base64_image:
+#             return {"error": "Base64 encoded image is required."}
+#
+#         # Decode the base64 image
+#         decoded_image = base64.b64decode(base64_image)
+#
+#         # Convert to NumPy array
+#         np_array = np.frombuffer(decoded_image, np.uint8)
+#
+#         # Convert to OpenCV image format
+#         cv_image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+#
+#         # Process cv_image if needed (e.g., transformations, analysis)
+#         bgr_frame_viz = post_estimation_3d_from_frame(
+#             cv_image, pose_api, True, 1.0
+#         )
+#
+#         # Re-encode the OpenCV image back to Base64
+#         _, buffer = cv2.imencode('.jpg', bgr_frame_viz)
+#         re_encoded_image = base64.b64encode(buffer).decode("utf-8")
+#
+#         return re_encoded_image
+#     except Exception as e:
+#         return f"An error occurred: {str(e)}"
 
 @app.post("/make-workout")
 async def make_workout(workout_form: WorkoutForm) -> WorkoutResponse:
