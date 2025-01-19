@@ -134,8 +134,16 @@ def post_estimation_3d_from_frame(bgr_frame, pose_api, state, show_mediapipe_ove
         analysis_results = analyze_pose(landmarks_3d, state)
 
         if show_mediapipe_overlay:
+            # Define the drawing specifications for green landmarks and connections
+            landmark_spec = mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=6, circle_radius=2)
+            connection_spec = mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2)
+            # Drawing the landmarks with the specified styles
             mp_drawing.draw_landmarks(
-                bgr_frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
+                bgr_frame,
+                results.pose_landmarks,
+                mp_pose.POSE_CONNECTIONS,
+                landmark_drawing_spec=landmark_spec,
+                connection_drawing_spec=connection_spec,
             )
 
         draw_overlay(bgr_frame, state)
@@ -161,10 +169,13 @@ def pose_estimation_3d_from_video(video_path: str, show_mediapipe_overlay: bool 
         "rep_start_time": None,
         "last_rep_time": None,
     }
+    loop = 0
+    video = []
 
     while True:
         ret, bgr_frame = cap.read()
         if not ret:
+            loop += 1
             cap = cv2.VideoCapture(video_path)
             ret, bgr_frame = cap.read()
 
@@ -172,18 +183,54 @@ def pose_estimation_3d_from_video(video_path: str, show_mediapipe_overlay: bool 
         bgr_frame_viz = post_estimation_3d_from_frame(
             bgr_frame, pose_api, state, show_mediapipe_overlay
         )
+        video.append(bgr_frame_viz)
+
+        if loop >= 1:
+            save_frames_to_video(video, "output2_green.mp4")
+            break
 
         cv2.imshow("3D Pose Estimation (MediaPipe)", bgr_frame_viz)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+
+
 
     cap.release()
     pose_api.close()
     cv2.destroyAllWindows()
 
 
+import cv2
+
+
+def save_frames_to_video(frames, output_path, fps=30):
+    """
+    Save a list of frames as an MP4 video.
+
+    Parameters:
+    - frames (list of np.ndarray): List of frames to save as video.
+    - output_path (str): Path to save the output video file (e.g., "output.mp4").
+    - fps (int): Frames per second for the output video.
+    """
+    if not frames:
+        raise ValueError("The frames list is empty.")
+
+    # Get the frame height, width, and initialize VideoWriter
+    height, width, _ = frames[0].shape
+    # Save video frames as WebM file
+    fourcc = cv2.VideoWriter_fourcc(*'MP4V')  # Codec for avi
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    for frame in frames:
+        out.write(frame)
+
+    out.release()
+    print(f"Video saved successfully to {output_path}")
+
+
 def main():
-    video_path = "../data/vid1.mp4"
+    filename = "vid2"
+    video_path = f"../data/{filename}.mp4"
     pose_estimation_3d_from_video(video_path=video_path, show_mediapipe_overlay=True)
 
 
